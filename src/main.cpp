@@ -18,6 +18,8 @@
  * - [x] mouse input
  * - [ ] might be time to optimize drawing. check framerate slowdown w/ current drawing algo
  *          see if you can make it better
+ * - [ ] apply movement
+ * - [ ] apply collision detection
  */
 
 struct Color {
