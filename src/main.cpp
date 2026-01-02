@@ -14,8 +14,10 @@
 /**
  * TODO
  * - [ ] frame rate font info
- * - [ ] render_circle filled
- * - [ ] mouse input
+ * - [x] render_circle filled
+ * - [x] mouse input
+ * - [ ] might be time to optimize drawing. check framerate slowdown w/ current drawing algo
+ *          see if you can make it better
  */
 
 struct Color {
@@ -24,11 +26,14 @@ struct Color {
     Uint8 b;
     Uint8 a;
 };
-
-struct Circle {
+template<size_t N>
+struct Circle_ {
     SDL_Point center;
     int radius;
+    std::array<SDL_Point,N> buffer_{};
 };
+
+using Circle = Circle_<100>;
 
 constexpr std::string_view TITLE = "quadtree";
 constexpr int WINDOW_X = SDL_WINDOWPOS_CENTERED;
@@ -37,12 +42,7 @@ constexpr int WINDOW_W = 800;
 constexpr int WINDOW_H = 600;
 constexpr Uint32 WINDOW_SDL_FLAGS = SDL_WINDOW_RESIZABLE;
 constexpr Uint32 RENDERER_SDL_FLAGS = SDL_RENDERER_ACCELERATED;
-constexpr Color RENDER_CLEAR_COLOR = {
-    .r = 50,
-    .g = 200,
-    .b = 150,
-    .a = SDL_ALPHA_OPAQUE
-};
+
 constexpr float PI = 3.14159265358979323846264338327950288f;
 
 static SDL_Window* gWindow = nullptr;
@@ -51,11 +51,38 @@ static bool gRunning = true;
 static std::vector<SDL_Point> gPoints = {};
 static std::vector<Circle> gCircles{};
 
+constexpr auto addCircleCallback_ = [](int x, int y)->void{
+    gCircles.push_back(Circle{
+        .center = {
+            .x = x,
+            .y = y
+        },
+        .radius = 25,
+        .buffer_{}
+    });
+    std::cout << "Added a circle, size now: " << gCircles.size() << std::endl;
+};
+
+constexpr auto produceQuarterArc_ = [](auto &circle) -> void {
+    size_t numSamples = circle.buffer_.size();
+    double radStep = ((PI / 2) / numSamples);
+    size_t idx = 0;
+    for (double angleInRad = 0.0; angleInRad < (PI / 2); angleInRad += radStep)
+    {
+        auto arcX = static_cast<int>(circle.center.x + circle.radius * SDL_cos(angleInRad)); // quarter circle rad = pi/2
+        auto arcY = static_cast<int>(circle.center.y + circle.radius * SDL_sin(angleInRad)); // quarter circle rad = pi/2
+
+        circle.buffer_[idx++] = SDL_Point{arcX, arcY};
+    }
+};
+
 void processInput();
 void update();
 void draw();
 void render_circle(int x, int y);
 void render_circle(const Circle& circle);
+void handleKeyboardEvent(SDL_KeyboardEvent event);
+void handleMouseButtonEvent(SDL_MouseButtonEvent event);
 
 template<size_t N>
 void fill_circle(const std::array<SDL_Point, N>& arc, std::vector<SDL_Point>& drawBuffer, int rad);
@@ -148,10 +175,18 @@ void processInput() {
     SDL_Event event;
     while (SDL_PollEvent(&event))
         {
-            if (event.type == SDL_QUIT)
-            {
+            if (event.type == SDL_QUIT) {
                 gRunning = SDL_FALSE;
             }
+
+            if (event.type == SDL_KEYDOWN) {
+                handleKeyboardEvent(event.key);
+            }
+
+            if (event.type == SDL_MOUSEBUTTONDOWN) {
+                handleMouseButtonEvent(event.button);
+            }
+            
         }
 }
 
@@ -176,20 +211,39 @@ void draw() {
 
     // render vector of points
     SDL_SetRenderDrawColor(gRenderer, previousColor.g, previousColor.b, previousColor.r, previousColor.a);
+    
+    // render circles in circle container'
+    std::ranges::for_each(gCircles, produceQuarterArc_); // not sure how this would be different than forEach w/o ranges
+    for (const auto& circle : gCircles) {
+        render_circle(circle); // right now, this is just taking a circleobject, and using its arcbuffer to push the filled pixel coords into the gPoints array
+    }
+
     SDL_RenderDrawPoints(gRenderer, gPoints.data(), gPoints.size());
 
     SDL_SetRenderDrawColor(gRenderer, previousColor.r, previousColor.g, previousColor.b, previousColor.a);
     SDL_RenderPresent(gRenderer);
 }
 
+void handleKeyboardEvent(SDL_KeyboardEvent event) {
+    if (event.type == SDL_KEYDOWN) {
+        if (event.keysym.sym == SDLK_ESCAPE) {
+            gRunning = false;
+        }
+    }
+}
+
+void handleMouseButtonEvent(SDL_MouseButtonEvent button) {
+    std::cout << "clicking the app at: " << button.x << ", " << button.y << std::endl;
+    addCircleCallback_(button.x, button.y);
+}
+
 void render_circle(const Circle& circle) {
-    render_circle(circle.center.x, circle.center.y);
+   fill_circle(circle.buffer_, gPoints, circle.radius); 
 }
 
 void render_circle(int x, int y) {
-    SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
-    
-    // 
+    // SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
+
 
 }
 
