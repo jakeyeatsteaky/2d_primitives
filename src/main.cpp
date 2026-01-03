@@ -18,14 +18,15 @@
  *      - [ ] clean up file structure
  *      - [ ] clean up application structure (globals etc)
  *      - [ ] 
+ * - [ ] In order to apply movement I have to decouple movement from pizel space
+ *          it needs to be an arbitrary unit within screen space, then converted to
+ *          pixel coordinates.  i dont know hwo to do this yet
  * - [x] render num circles
  * - [x] frame rate font info
  * - [x] render_circle filled
  * - [x] mouse input
  * - [x] might be time to optimize drawing. check framerate slowdown w/ current drawing algo
  *          see if you can make it better
- * - [ ] apply movement
- * - [ ] apply collision detection
  */
 
 struct Color
@@ -54,7 +55,9 @@ constexpr Uint32 WINDOW_SDL_FLAGS = SDL_WINDOW_RESIZABLE;
 constexpr Uint32 RENDERER_SDL_FLAGS = SDL_RENDERER_ACCELERATED;
 constexpr std::string_view PATH_TO_FONT = "../assets/arial.ttf";
 constexpr size_t FONT_SIZE = 25;
-constexpr SDL_Rect dstRect = SDL_Rect{10, 10, 350, 75};
+constexpr SDL_Rect dstRect = SDL_Rect{10, 10, 450, 75};
+constexpr double TARGET_FPS = 300.0;
+constexpr double FRAME_MS   = 1000.0 / TARGET_FPS;
 
 constexpr float PI = 3.14159265358979323846264338327950288f;
 
@@ -64,12 +67,21 @@ static TTF_Font *gFont = nullptr;
 static SDL_Texture *gFontTexture = nullptr;
 static bool gRunning = true;
 static std::vector<SDL_Point> gPoints = {};
+static std::vector<SDL_Point> gTest = {};
 static std::queue<Circle> gCircles{};
 static size_t gNumCircles = 0;
+static double gDeltaTime = 0;
+static Circle gTestCircle = {
+    .center.x = 100,
+    .center.y = 100,
+    .radius = 10,
+    .buffer_ = {}
+};
 
 constexpr auto produceQuarterArc_ = [](auto &circle) -> void
 {
     size_t numSamples = circle.buffer_.size();
+    std::memset(circle.buffer_.data(), 0, circle.buffer_.size());
     double radStep = ((PI / 2) / numSamples);
     size_t idx = 0;
     for (double angleInRad = 0.0; angleInRad < (PI / 2); angleInRad += radStep)
@@ -98,8 +110,8 @@ constexpr auto addCircleCallback_ = [](int x, int y) -> void
 
 constexpr auto updateFPS_ = [](double fps) -> void
 {
-    char buffer[128]; // Ensure buffer is large enough for the string
-    std::sprintf(buffer, "FPS: %.2f          %d particles", fps, gNumCircles);
+    char buffer[256]; // Ensure buffer is large enough for the string
+    std::sprintf(buffer, "FPS: %.2f    DT: %.5f    %d particles", fps, gDeltaTime, gNumCircles);
 
     SDL_Surface *fontSurface = TTF_RenderText_Solid(gFont, buffer, SDL_Color{255, 255, 255, 255});
     gFontTexture = SDL_CreateTextureFromSurface(gRenderer, fontSurface);
@@ -120,34 +132,7 @@ void add_circle_to_buffer(const std::array<SDL_Point, N> &arc, std::vector<SDL_P
 int main(_mu int argc, _mu char **argv)
 {
     gPoints.reserve(400);
-    std::cout << gPoints.capacity() << std::endl;
-
-    for (int i = 0; i < gPoints.capacity(); i++)
-    {
-        SDL_Point pt = {
-            .x = i,
-            .y = i};
-        gPoints.emplace_back(std::move(pt));
-    }
-
-    SDL_Point center = {
-        .x = 500,
-        .y = 500};
-
-    int radius = 50; // px?
-
-    // loop quarter circle, add all 4 points to the buffer
-    constexpr size_t numSamples = 100;
-    double radStep = ((PI / 2) / numSamples);
-    std::array<SDL_Point, numSamples> arc{};
-    size_t idx = 0;
-    for (double angleInRad = 0.0; angleInRad < (PI / 2); angleInRad += radStep)
-    {
-        auto arcX = static_cast<int>(center.x + radius * SDL_cos(angleInRad)); // quarter circle rad = pi/2
-        auto arcY = static_cast<int>(center.y + radius * SDL_sin(angleInRad)); // quarter circle rad = pi/2
-
-        arc[idx++] = SDL_Point{arcX, arcY};
-    }
+    
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -194,28 +179,37 @@ int main(_mu int argc, _mu char **argv)
 
     updateFPS_(10.0);
 
-    Uint32 prev = 0;
-    Uint32 fps_counter = 0;
-    Uint32 frames_drawn = 0;
-    Uint32 fps = 0;
-    while (gRunning) {
-        Uint32 now = SDL_GetTicks();
-        Uint32 diff = now - prev;
-        fps_counter += diff;
-        prev = now;
+Uint64 start = SDL_GetTicks64();
+double nextFrame = start + FRAME_MS;
+Uint64 lastFrame = start;
+Uint32 frames = 0;
+Uint64 fpsTimer = start;
 
-        if (fps_counter >= 1000)
-        {
-            fps = (float)frames_drawn / (float)(fps_counter / 1000.0f);
-            frames_drawn = 0;
-            fps_counter = 0;
-            updateFPS_(fps);
-        }
-        processInput();
-        update();
-        draw();
-        frames_drawn++;
+while (gRunning) {
+    Uint64 now = SDL_GetTicks64();
+
+    if (now < nextFrame) {
+        SDL_Delay(static_cast<Uint32>(nextFrame - now));
+        now = SDL_GetTicks64();
     }
+
+    gDeltaTime = (now - lastFrame) / 1000.0;
+    lastFrame = now;
+
+    processInput();
+    update();
+    draw();
+
+    frames++;
+    nextFrame += FRAME_MS;
+
+    if (now - fpsTimer >= 2000) {
+        double fps = frames * 1000.0 / (now - fpsTimer);
+        updateFPS_(fps);
+        frames = 0;
+        fpsTimer = now;
+    }
+}
 
     std::cout << "hello world" << std::endl;
 
@@ -270,6 +264,15 @@ void update()
         add_circle_to_buffer(circle.buffer_, gPoints, circle.radius);
         gCircles.pop();
     }
+
+    // testing delta time;
+    // produceQuarterArc_(gTestCircle);
+    // gTest.clear();
+    // add_circle_to_buffer(gTestCircle.buffer_, gTest, gTestCircle.radius);
+    // auto increment = 100 * (gDeltaTime * 1000);
+
+    // gTestCircle.center.x += (int)(increment / 1000);
+    // gTestCircle.center.y += (int)(increment / 1000);
 }
 
 void draw()
@@ -285,6 +288,9 @@ void draw()
     SDL_SetRenderDrawColor(gRenderer, previousColor.r, previousColor.g, previousColor.b, previousColor.a);
 
     SDL_RenderCopy(gRenderer, gFontTexture, 0, &dstRect);
+
+    SDL_SetRenderDrawColor(gRenderer,255,255,255,255);
+    SDL_RenderDrawPoints(gRenderer, gTest.data(), gTest.size());
     SDL_RenderPresent(gRenderer);
 }
 
