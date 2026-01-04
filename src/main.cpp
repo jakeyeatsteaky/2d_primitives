@@ -203,7 +203,7 @@ void update()
     while (!gCircles.empty())
     {
         const auto &circle = gCircles.front();
-        add_circle_to_buffer(circle.buffer_, gPoints, circle.radius);
+        create_render_buffer_with_arc(circle.buffer_, gPoints, circle.radius);
         gCircles.pop();
     }
 }
@@ -227,37 +227,3 @@ void draw()
     SDL_RenderPresent(gRenderer);
 }
 
-template <size_t N>
-void add_circle_to_buffer(const std::array<SDL_Point, N> &arc, std::vector<SDL_Point> &drawBuffer, int rad)
-{
-    if (N == 0)
-        return;
-    // derive the center point from a tangent point on the circle and the radius
-    // have to make an assumption that the first point is theta == 0
-    // :: sine(theta) == 0
-    // :: cos(theta) == 1
-    int centerX = arc[0].x - rad;
-    int centerY = arc[0].y;
-    for (int i = 0; i < arc.size(); i++)
-    {
-        SDL_Point point = arc.at(i);
-        int negX = centerX + (centerX - point.x);
-        int negY = centerY + (centerY - point.y);
-        drawBuffer.emplace_back(SDL_Point{negX, negY});    // Q2
-        drawBuffer.emplace_back(SDL_Point{negX, point.y}); // Q3
-        drawBuffer.emplace_back(SDL_Point{point.x, negY}); //
-
-        for (int x = centerX; x <= point.x; x++)
-        {
-            for (int y = centerY; y <= point.y; y++)
-            {
-                int negFillX = centerX + (centerX - x);
-                int negFillY = centerY + (centerY - y);
-                drawBuffer.emplace_back(SDL_Point{x, y});        // filler point
-                drawBuffer.emplace_back(SDL_Point{negFillX, y}); //
-                drawBuffer.emplace_back(SDL_Point{negFillX, negFillY});
-                drawBuffer.emplace_back(SDL_Point{x, negFillY});
-            }
-        }
-    }
-}
