@@ -264,15 +264,6 @@ void update()
         add_circle_to_buffer(circle.buffer_, gPoints, circle.radius);
         gCircles.pop();
     }
-
-    // testing delta time;
-    // produceQuarterArc_(gTestCircle);
-    // gTest.clear();
-    // add_circle_to_buffer(gTestCircle.buffer_, gTest, gTestCircle.radius);
-    // auto increment = 100 * (gDeltaTime * 1000);
-
-    // gTestCircle.center.x += (int)(increment / 1000);
-    // gTestCircle.center.y += (int)(increment / 1000);
 }
 
 void draw()
