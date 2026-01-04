@@ -9,4 +9,8 @@ namespace util {
         std::this_thread::sleep_for(std::chrono::milliseconds(ms));
         std::cout << msg << std::endl;
     }
+
+    time_point get_time_point_now() {
+        return std::chrono::high_resolution_clock::now();
+    }
 }
