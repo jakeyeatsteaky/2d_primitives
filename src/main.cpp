@@ -45,10 +45,12 @@ static TTF_Font *gFont = nullptr;
 static SDL_Texture *gFontTexture = nullptr;
 static bool gRunning = true;
 static std::vector<SDL_Point> gPoints = {};
-static std::vector<SDL_Point> gTest = {};
 static std::queue<Particle> gCircles{};
 static int gNumCircles = 0;
 static double gDeltaTime = 0;
+
+// new particle rendering method
+static std::vector<__Particle> gParticleVec{};
 
 constexpr auto add_particle_ = [](int x, int y) -> void
 {
@@ -74,9 +76,14 @@ constexpr auto update_fps_ = [](double fps) -> void {
     SDL_FreeSurface(fontSurface);
 };
 
+int init();
 void processInput();
 void update();
 void draw();
+
+
+float get_world_space(int pixelSpaceValue);
+int get_pixel_space(float worldSpaceValue);
 
 template <size_t N>
 void add_circle_to_buffer(const std::array<SDL_Point, N> &arc, std::vector<SDL_Point> &drawBuffer, int rad);
@@ -84,7 +91,7 @@ void add_circle_to_buffer(const std::array<SDL_Point, N> &arc, std::vector<SDL_P
 int main(_mu int argc, _mu char **argv)
 {
     gPoints.reserve(400);
-    
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "Error initializing SDL: " << SDL_GetError() << std::endl;
         return -1;
@@ -124,7 +131,20 @@ int main(_mu int argc, _mu char **argv)
         return -1;
     }
 
-    update_fps_(10.0);
+
+    // init new particle method
+    __Particle particle = {
+        .x = get_world_space(100), // pixel space
+        .y = get_world_space(100), // pixel space
+        .r = get_world_space(25)
+    };
+    std::cout << particle << std::endl;
+
+    produce_render_data(particle);
+    gParticleVec.push_back(particle);
+
+
+    update_fps_(TARGET_FPS);
 
     auto start = SDL_GetTicks64();
     double nextFrame = start + FRAME_MS;
@@ -208,6 +228,17 @@ void update()
     }
 }
 
+const auto apply_ = [](world_point wp) -> SDL_Point {
+    SDL_Point ret {
+        .x = 0,
+        .y = 0
+    };
+    
+    ret.x = get_pixel_space(wp.x);
+    ret.y = get_pixel_space(wp.y);
+    return ret;
+};
+
 void draw()
 {
     SDL_RenderClear(gRenderer);
@@ -218,12 +249,34 @@ void draw()
     SDL_SetRenderDrawColor(gRenderer, previousColor_g, previousColor_b, previousColor_r, previousColor_a);
     SDL_RenderDrawPoints(gRenderer, gPoints.data(), gPoints.size());
 
+    // test world space
+    for (const auto& p : gParticleVec) {
+        std::vector<SDL_Point> point_data{};
+        // point_data.reserve(p.render_data.size());
+        // std::transform(p.render_data.begin(), p.render_data.end(), point_data.begin(), apply_);
+        for (auto i = 0; i < p.render_data.size(); i++) {
+            int x = get_pixel_space(p.render_data[i].x);
+            int y = get_pixel_space(p.render_data[i].y);
+            point_data.push_back(SDL_Point{x,y});
+        }
+        SDL_RenderDrawPoints(gRenderer, point_data.data(), point_data.size());
+    }
+
     SDL_SetRenderDrawColor(gRenderer, previousColor_r, previousColor_g, previousColor_b, previousColor_a);
 
     SDL_RenderCopy(gRenderer, gFontTexture, 0, &dstRect);
 
-    SDL_SetRenderDrawColor(gRenderer,255,255,255,255);
-    SDL_RenderDrawPoints(gRenderer, gTest.data(), gTest.size());
     SDL_RenderPresent(gRenderer);
 }
 
+
+float get_world_space(int pixelSpaceValue) {
+    if (pixelSpaceValue <= 0) return 0.0f;
+    float worldSpace = static_cast<float>(pixelSpaceValue) / PIXEL_TO_UNIT_CONVERSION;
+    return worldSpace;
+}
+
+int get_pixel_space(float worldSpace) {
+    if (worldSpace <= 0.0f) return 0;
+    return worldSpace * PIXEL_TO_UNIT_CONVERSION;
+}
