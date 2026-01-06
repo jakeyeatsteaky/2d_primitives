@@ -106,6 +106,10 @@ int main(_mu int argc, _mu char **argv)
     }
 
     gFont = TTF_OpenFont(PATH_TO_FONT.data(), FONT_SIZE);
+    if (!gFont) {
+        std::cerr << "Unable to find font file at: " << PATH_TO_FONT << std::endl;
+        return -1;
+    }
 
     gWindow = SDL_CreateWindow(
         TITLE.data(),

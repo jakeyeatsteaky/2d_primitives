@@ -101,7 +101,7 @@ inline void produce_render_data(__Particle& particle) {
 
     create_render_buffer_with_arc<100ul, world_point>(quarter_arc, particle.render_data, particle.r, 0.01);
 
-    std::cout << particle << std::endl;
+    // std::cout << particle << std::endl;
 }
 
 std::ostream& operator<<(std::ostream &out, const __Particle & particle) {
