@@ -6,6 +6,7 @@
 #include <ranges>
 #include <array>
 #include <queue>
+#include <functional>
 
 #include "util.h"
 #include "events.h"
@@ -239,11 +240,11 @@ void update()
         gCircles.pop();
     }
 
-    start here
-    You have started creating a world space and pixel space separation
-    you have kind of implmented the delta time
-    lets get rid of this dumb render method in favor of the scan line 
-    lets also clean this up and see if we can get some movement with vectors
+    // start here
+    // You have started creating a world space and pixel space separation
+    // you have kind of implmented the delta time
+    // lets get rid of this dumb render method in favor of the scan line 
+    // lets also clean this up and see if we can get some movement with vectors
     auto& particle = gParticleVec.at(0);
     particle.x += get_world_space(100) * gDeltaTime;
     particle.y += get_world_space(100) * gDeltaTime;
