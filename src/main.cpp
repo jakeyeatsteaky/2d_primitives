@@ -46,6 +46,7 @@ static SDL_Texture *gFontTexture = nullptr;
 static bool gRunning = true;
 static std::vector<SDL_Point> gPoints = {};
 static std::queue<Particle> gCircles{};
+static std::vector<SDL_Point> point_data{};
 static int gNumCircles = 0;
 static double gDeltaTime = 0;
 
@@ -143,6 +144,17 @@ int main(_mu int argc, _mu char **argv)
     produce_render_data(particle);
     gParticleVec.push_back(particle);
 
+    for (const auto& p : gParticleVec) {
+        
+        // point_data.reserve(p.render_data.size());
+        // std::transform(p.render_data.begin(), p.render_data.end(), point_data.begin(), apply_);
+        for (auto i = 0; i < p.render_data.size(); i++) {
+            int x = get_pixel_space(p.render_data[i].x);
+            int y = get_pixel_space(p.render_data[i].y);
+            point_data.push_back(SDL_Point{x,y});
+        }
+    }
+
 
     update_fps_(TARGET_FPS);
 
@@ -223,8 +235,18 @@ void update()
     while (!gCircles.empty())
     {
         const auto &circle = gCircles.front();
-        create_render_buffer_with_arc(circle.buffer_, gPoints, circle.radius);
+        create_render_buffer_with_arc(circle.buffer_, gPoints, circle.radius, 1);
         gCircles.pop();
+    }
+
+    auto& particle = gParticleVec.at(0);
+    particle.x += get_world_space(100) * gDeltaTime;
+    particle.y += get_world_space(100) * gDeltaTime;
+    // point_data.clear();
+    produce_render_data(particle);
+    point_data.clear();
+    for(const auto [x,y] : particle.render_data) {
+        point_data.push_back(SDL_Point{.x = get_pixel_space(x), .y = get_pixel_space(y)});
     }
 }
 
@@ -250,17 +272,8 @@ void draw()
     SDL_RenderDrawPoints(gRenderer, gPoints.data(), gPoints.size());
 
     // test world space
-    for (const auto& p : gParticleVec) {
-        std::vector<SDL_Point> point_data{};
-        // point_data.reserve(p.render_data.size());
-        // std::transform(p.render_data.begin(), p.render_data.end(), point_data.begin(), apply_);
-        for (auto i = 0; i < p.render_data.size(); i++) {
-            int x = get_pixel_space(p.render_data[i].x);
-            int y = get_pixel_space(p.render_data[i].y);
-            point_data.push_back(SDL_Point{x,y});
-        }
-        SDL_RenderDrawPoints(gRenderer, point_data.data(), point_data.size());
-    }
+    
+    SDL_RenderDrawPoints(gRenderer, point_data.data(), point_data.size());
 
     SDL_SetRenderDrawColor(gRenderer, previousColor_r, previousColor_g, previousColor_b, previousColor_a);
 

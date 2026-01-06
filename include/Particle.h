@@ -31,7 +31,7 @@ constexpr auto produce_quarter_arc_ = [](auto &circle) -> void
 };
 
 template <size_t N, class T>
-void create_render_buffer_with_arc(const std::array<T, N> &arc, std::vector<T> &drawBuffer, auto rad)
+void create_render_buffer_with_arc(const std::array<T, N> &arc, std::vector<T> &drawBuffer, auto rad, auto increment)
 {
     if (N == 0)
         return;
@@ -50,9 +50,9 @@ void create_render_buffer_with_arc(const std::array<T, N> &arc, std::vector<T> &
         drawBuffer.emplace_back(T{negX, point.y}); // Q3
         drawBuffer.emplace_back(T{point.x, negY}); //
 
-        for (auto x = centerX; x <= point.x; x++)
+        for (auto x = centerX; x <= point.x; x+= increment)
         {
-            for (auto y = centerY; y <= point.y; y++)
+            for (auto y = centerY; y <= point.y; y+= increment)
             {
                 auto negFillX = centerX + (centerX - x);
                 auto negFillY = centerY + (centerY - y);
@@ -63,6 +63,7 @@ void create_render_buffer_with_arc(const std::array<T, N> &arc, std::vector<T> &
             }
         }
     }
+    
 }
 
 
@@ -84,6 +85,7 @@ std::ostream& operator<<(std::ostream &out, const __Particle & particle);
 
 inline void produce_render_data(__Particle& particle) {
    // quarter arc
+   particle.render_data.clear();
    std::array<world_point, 100> quarter_arc{};
     size_t numSamples = 100;
     double radStep = ((PI / 2) / numSamples);
@@ -96,7 +98,7 @@ inline void produce_render_data(__Particle& particle) {
         quarter_arc[idx++] = world_point{arcX, arcY}; 
     }
 
-    create_render_buffer_with_arc<100ul, world_point>(quarter_arc, particle.render_data, particle.r);
+    create_render_buffer_with_arc<100ul, world_point>(quarter_arc, particle.render_data, particle.r, 0.01);
 
     std::cout << particle << std::endl;
 }
