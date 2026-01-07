@@ -69,6 +69,18 @@ void draw();
 float get_world_space(int pixelSpaceValue);
 int get_pixel_space(float worldSpaceValue);
 
+template<class Geom, size_t N>
+std::array<Geom, N> apply_geometry(Geom shape) {
+
+}
+
+struct CircleGeometry {
+    for (y = -r, y <= r; y++) {
+        span of a circle,
+        
+    }
+};
+
 int main(_mu int argc, _mu char **argv)
 {
 
@@ -126,26 +138,26 @@ int main(_mu int argc, _mu char **argv)
 
 
     // init new particle method
-    __Particle particle = {
-        .x = get_world_space(100), // pixel space
-        .y = get_world_space(100), // pixel space
-        .r = get_world_space(25)
-    };
-    std::cout << particle << std::endl;
+    // __Particle particle = {
+    //     .x = get_world_space(100), // pixel space
+    //     .y = get_world_space(100), // pixel space
+    //     .r = get_world_space(25)
+    // };
+    // std::cout << particle << std::endl;
 
-    produce_render_data(particle);
-    gParticleVec.push_back(particle);
+    // produce_render_data(particle);
+    // gParticleVec.push_back(particle);
 
-    for (const auto& p : gParticleVec) {
+    // for (const auto& p : gParticleVec) {
         
-        // point_data.reserve(p.render_data.size());
-        // std::transform(p.render_data.begin(), p.render_data.end(), point_data.begin(), apply_);
-        for (auto i = 0; i < p.render_data.size(); i++) {
-            int x = get_pixel_space(p.render_data[i].x);
-            int y = get_pixel_space(p.render_data[i].y);
-            point_data.push_back(SDL_Point{x,y});
-        }
-    }
+    //     // point_data.reserve(p.render_data.size());
+    //     // std::transform(p.render_data.begin(), p.render_data.end(), point_data.begin(), apply_);
+    //     for (auto i = 0; i < p.render_data.size(); i++) {
+    //         int x = get_pixel_space(p.render_data[i].x);
+    //         int y = get_pixel_space(p.render_data[i].y);
+    //         point_data.push_back(SDL_Point{x,y});
+    //     }
+    // }
 
 
     update_fps_(TARGET_FPS);
@@ -264,7 +276,7 @@ void draw()
 
     SDL_SetRenderDrawColor(gRenderer, previousColor_g, previousColor_b, previousColor_r, previousColor_a);
     for (const auto& particle : particles) {
-        SDL_GetRen
+        SDL_RenderDrawPoints(gRenderer, apply_geometry<Particle, particle.geometry_count>(particle), particle.geometry_count);
     }
 
 
