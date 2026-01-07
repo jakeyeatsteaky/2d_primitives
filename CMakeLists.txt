@@ -5,6 +5,15 @@ project(lumina VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(PLATFORM ${CMAKE_SYSTEM_NAME})
+message("Platform: ${PLATFORM}")
+
+if (PLATFORM STREQUAL "Linux")
+  set(PLATFORM_LINUX TRUE)
+else()
+  set(PLATFORM_MAC TRUE)
+endif()
+
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h")
 
@@ -24,3 +33,7 @@ target_link_libraries(${PROJECT_NAME}
     SDL2_mixer::SDL2_mixer
     glm::glm
 )
+
+if (PLATFORM_LINUX)
+    target_include_directories()
+endif()

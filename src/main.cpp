@@ -8,10 +8,12 @@
 #include <queue>
 #include <functional>
 
+#include "App.h"
 #include "util.h"
 #include "events.h"
 #include "constants.h"
 #include "Particle.h"
+
 
 #define _mu [[maybe_unused]]
 
@@ -38,61 +40,46 @@
  *      - [ ] Logic of fps should be decoupled.  there is update and gametick frame rate, and then render framerate
  *              render rate should be on vsync (pass in vsynC flag)
  *              the update logic is separate
+ * 
+ * - [ ] render a circle with scanline
  */
+
+
 
 static SDL_Window *gWindow = nullptr;
 static SDL_Renderer *gRenderer = nullptr;
 static TTF_Font *gFont = nullptr;
 static SDL_Texture *gFontTexture = nullptr;
 static bool gRunning = true;
-static std::vector<SDL_Point> gPoints = {};
-static std::queue<Particle> gCircles{};
-static std::vector<SDL_Point> point_data{};
-static int gNumCircles = 0;
 static double gDeltaTime = 0;
-
-// new particle rendering method
-static std::vector<__Particle> gParticleVec{};
-
-constexpr auto add_particle_ = [](int x, int y) -> void
-{
-    Particle add = {
-        .center = {
-            .x = x,
-            .y = y},
-        .radius = 25,
-        .buffer_ = {}};
-
-    produce_quarter_arc_(add);
-
-    gCircles.push(add);
-    ++gNumCircles;
-};
 
 constexpr auto update_fps_ = [](double fps) -> void {
     char buffer[256]; // Ensure buffer is large enough for the string
-    std::snprintf(buffer, sizeof(buffer), "FPS: %.2f    DT: %.5f    %d particles", fps, gDeltaTime, gNumCircles);
+    std::snprintf(buffer, sizeof(buffer), "FPS: %.2f    DT: %.5f", fps, gDeltaTime);
 
     SDL_Surface *fontSurface = TTF_RenderText_Solid(gFont, buffer, SDL_Color{255, 255, 255, 255});
     gFontTexture = SDL_CreateTextureFromSurface(gRenderer, fontSurface);
     SDL_FreeSurface(fontSurface);
 };
 
-int init();
 void processInput();
 void update();
 void draw();
 
-
 float get_world_space(int pixelSpaceValue);
 int get_pixel_space(float worldSpaceValue);
 
-template <size_t N>
-void add_circle_to_buffer(const std::array<SDL_Point, N> &arc, std::vector<SDL_Point> &drawBuffer, int rad);
-
 int main(_mu int argc, _mu char **argv)
 {
-    gPoints.reserve(400);
+
+    App app;
+    app.init();
+
+    if (!app.initSuccess()) {
+        std::cerr << "Failed to initialize Application" << std::endl;
+        return -1;
+    }
+
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "Error initializing SDL: " << SDL_GetError() << std::endl;
@@ -237,39 +224,37 @@ void update()
     const Uint8 b = static_cast<Uint8>(blue * 255);
     SDL_SetRenderDrawColor(gRenderer, r, g, b, SDL_ALPHA_OPAQUE); /* new color, full alpha. */
 
-    while (!gCircles.empty())
-    {
-        const auto &circle = gCircles.front();
-        create_render_buffer_with_arc(circle.buffer_, gPoints, circle.radius, 1);
-        gCircles.pop();
-    }
+// TBD
+    // for (auto& particles : particle_list) {
+    //     particles.handle_collision(); //check for collision 
+    //     particles.update();// update center position;
+    // }
+
+
+
+// OLD SHIT
+    // while (!gCircles.empty())
+    // {
+    //     const auto &circle = gCircles.front();
+    //     create_render_buffer_with_arc(circle.buffer_, gPoints, circle.radius, 1);
+    //     gCircles.pop();
+    // }
 
     // start here
     // You have started creating a world space and pixel space separation
     // you have kind of implmented the delta time
     // lets get rid of this dumb render method in favor of the scan line 
     // lets also clean this up and see if we can get some movement with vectors
-    auto& particle = gParticleVec.at(0);
-    particle.x += get_world_space(100) * gDeltaTime;
-    particle.y += get_world_space(100) * gDeltaTime;
+    // auto& particle = gParticleVec.at(0);
+    // particle.x += get_world_space(100) * gDeltaTime;
+    // particle.y += get_world_space(100) * gDeltaTime;
+    // // point_data.clear();
+    // produce_render_data(particle);
     // point_data.clear();
-    produce_render_data(particle);
-    point_data.clear();
-    for(const auto [x,y] : particle.render_data) {
-        point_data.push_back(SDL_Point{.x = get_pixel_space(x), .y = get_pixel_space(y)});
-    }
+    // for(const auto [x,y] : particle.render_data) {
+    //     point_data.push_back(SDL_Point{.x = get_pixel_space(x), .y = get_pixel_space(y)});
+    // }
 }
-
-const auto apply_ = [](world_point wp) -> SDL_Point {
-    SDL_Point ret {
-        .x = 0,
-        .y = 0
-    };
-    
-    ret.x = get_pixel_space(wp.x);
-    ret.y = get_pixel_space(wp.y);
-    return ret;
-};
 
 void draw()
 {
@@ -277,13 +262,11 @@ void draw()
     Uint8 previousColor_r, previousColor_g, previousColor_b, previousColor_a;
     SDL_GetRenderDrawColor(gRenderer, &previousColor_r, &previousColor_g, &previousColor_b, &previousColor_a);
 
-    // render vector of points
     SDL_SetRenderDrawColor(gRenderer, previousColor_g, previousColor_b, previousColor_r, previousColor_a);
-    SDL_RenderDrawPoints(gRenderer, gPoints.data(), gPoints.size());
+    for (const auto& particle : particles) {
+        SDL_GetRen
+    }
 
-    // test world space
-    
-    SDL_RenderDrawPoints(gRenderer, point_data.data(), point_data.size());
 
     SDL_SetRenderDrawColor(gRenderer, previousColor_r, previousColor_g, previousColor_b, previousColor_a);
 
